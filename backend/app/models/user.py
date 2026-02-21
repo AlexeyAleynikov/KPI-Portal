@@ -64,7 +64,8 @@ class User(Base):
     audit_logs = relationship("AuditLog", back_populates="user", lazy="dynamic")
 
     # KPI значения
-    kpi_values = relationship("KpiValue", back_populates="user", lazy="dynamic")
+#    kpi_values = relationship("KpiValue", back_populates="user", lazy="dynamic")
+    kpi_values = relationship("KpiValue", foreign_keys="KpiValue.user_id", back_populates="user", lazy="dynamic")
 
     def display_name(self) -> str:
         """Возвращает публичный идентификатор: Азия-Россия-Москва-17"""

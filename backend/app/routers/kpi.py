@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.auth.deps import get_current_user, require_manager
 from app.models.user import User
-from app.models.kpi import KpiValue, KpiTarget, KpiIndicator, RoleIndicator
+from app.models.kpi import KpiValue, KpiTarget, KpiIndicator
+from app.models.role import RoleIndicator
 
 router = APIRouter()
 
