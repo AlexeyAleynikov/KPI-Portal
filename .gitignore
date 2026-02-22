@@ -1,6 +1,12 @@
+# Dependencies
 frontend/node_modules/
 frontend/.next/
 backend/venv/
 **/__pycache__/
 *.pyc
 *.pyo
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
