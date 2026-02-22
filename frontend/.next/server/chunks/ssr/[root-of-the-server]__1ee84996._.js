@@ -1,3 +1,0 @@
-module.exports=[29986,a=>{a.v({className:"inter_222bd768-module__ipYlpq__className"})},27572,a=>{"use strict";var b=a.i(7997),c=a.i(29986);let d={className:c.default.className,style:{fontFamily:"'Inter', 'Inter Fallback'",fontStyle:"normal"}};function e({children:a}){return(0,b.jsx)("html",{lang:"ru",children:(0,b.jsx)("body",{className:`${d.className} bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100`,children:a})})}null!=c.default.variable&&(d.variable=c.default.variable),a.s(["default",()=>e,"metadata",0,{title:"Корпоративный портал",description:"KPI Dashboard & Tools"}],27572)}];
-
-//# sourceMappingURL=%5Broot-of-the-server%5D__1ee84996._.js.map
