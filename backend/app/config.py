@@ -23,6 +23,10 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3000"
 
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = "CorpPortalBot"
+    OTP_CHANNEL: str = "log"
+
     class Config:
         env_file = ".env"
 

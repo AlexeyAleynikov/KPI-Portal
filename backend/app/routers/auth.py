@@ -43,7 +43,7 @@ async def otp_send(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e))
 
-    send_otp_email(body.email, code)
+    send_otp_email(body.email, code, telegram_chat_id=user.telegram_chat_id, otp_channel=user.otp_channel)
 
     db.add(AuditLog(user_id=user.id, action="otp_sent", ip_address=ip, method="email_otp"))
     await db.commit()

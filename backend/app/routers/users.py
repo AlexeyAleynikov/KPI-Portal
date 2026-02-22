@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
 from app.database import get_db
-from app.auth.deps import require_manager, require_admin
+from app.auth.deps import require_manager, require_admin, get_current_user
 from app.models.user import User, UserRole, AccessLevel
+from app.schemas.user import UserRead
 
 router = APIRouter()
 
@@ -21,30 +22,29 @@ class CreateUserSchema(BaseModel):
     portal_role_id: Optional[int] = None
 
 
-@router.get("/team")
+@router.get("/team", response_model=List[UserRead])
 async def get_team(
     db: AsyncSession = Depends(get_db),
-    manager: User = Depends(require_manager),
+    current_user: User = Depends(get_current_user),
 ):
-    """Список подчинённых менеджера."""
-    result = await db.execute(
-        select(User).where(User.manager_id == manager.id, User.is_active == True)
-    )
+    """
+    Список подчиненных.
+    Админ видит всех, Менеджер — только свою команду.
+    """
+    if current_user.role == UserRole.ADMIN:
+        result = await db.execute(select(User).where(User.is_active == True))
+    else:
+        result = await db.execute(
+            select(User).where(User.manager_id == current_user.id, User.is_active == True)
+        )
+    
     users = result.scalars().all()
-    return [
-        {
-            "id": u.id,
-            "display_name": u.display_name(),
-            "email": u.email,
-            "full_name": u.full_name,
-            "role": u.role.value,
-            "city": u.city,
-        }
-        for u in users
-    ]
+    for u in users:
+        u.display_id = u.display_name()
+    return users
 
 
-@router.post("/")
+@router.post("/", response_model=UserRead)
 async def create_user(
     body: CreateUserSchema,
     db: AsyncSession = Depends(get_db),
@@ -71,7 +71,8 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return {"id": user.id, "display_name": user.display_name()}
+    user.display_id = user.display_name()
+    return user
 
 
 @router.delete("/{user_id}")

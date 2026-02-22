@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 from app.database import get_db
 from app.auth.deps import require_admin
@@ -10,6 +10,7 @@ from app.models.user import User, UserRole
 from app.models.kpi import KpiIndicator, ValueType, SourceType
 from app.models.links import LinkSection, Link
 from app.models.role import Role
+from app.schemas.user import UserRead, UserUpdate
 
 router = APIRouter()
 
@@ -45,6 +46,7 @@ class KpiSchema(BaseModel):
     value_type: ValueType = ValueType.NUMBER
     source_type: SourceType = SourceType.MANUAL
     cron_schedule: Optional[str] = None
+    source_config: Optional[dict] = None
 
 
 @router.post("/indicators")
@@ -55,6 +57,24 @@ async def create_indicator(body: KpiSchema, db: AsyncSession = Depends(get_db), 
     await db.refresh(ind)
     return {"id": ind.id, "name_system": ind.name_system}
 
+@router.delete("/indicators/{indicator_id}")
+async def delete_indicator(indicator_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    ind = await db.get(KpiIndicator, indicator_id)
+    if not ind:
+        raise HTTPException(status_code=404, detail="Indicator not found")
+    await db.delete(ind)
+    await db.commit()
+    return {"detail": "Indicator deleted"}
+
+@router.patch("/indicators/{indicator_id}")
+async def update_indicator(indicator_id: int, body: KpiSchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    ind = await db.get(KpiIndicator, indicator_id)
+    if not ind:
+        raise HTTPException(status_code=404, detail="Indicator not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(ind, field, value)
+    await db.commit()
+    return {"detail": "Indicator updated"}
 
 @router.get("/indicators")
 async def list_indicators(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
@@ -98,6 +118,24 @@ async def create_link(body: LinkSchema, db: AsyncSession = Depends(get_db), _=De
     await db.refresh(link)
     return {"id": link.id}
 
+@router.patch("/links/{link_id}")
+async def update_link(link_id: int, body: LinkSchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    link = await db.get(Link, link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(link, field, value)
+    await db.commit()
+    return {"detail": "Link updated"}
+
+@router.delete("/links/{link_id}")
+async def delete_link(link_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    link = await db.get(Link, link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    await db.delete(link)
+    await db.commit()
+    return {"detail": "Link deleted"}
 
 # ─── Delegation ───────────────────────────────────────────────────────────────
 
@@ -128,14 +166,53 @@ async def set_delegation(
 
 # ─── Users ────────────────────────────────────────────────────────────────────
 
-@router.get("/users")
+#@router.get("/users")
+#async def list_users(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+#    result = await db.execute(select(User))
+#    return [
+#        {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role.value, "is_active": u.is_active}
+#        for u in result.scalars()
+#    ]
+
+@router.get("/users", response_model=List[UserRead])
 async def list_users(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
     result = await db.execute(select(User))
-    return [
-        {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role.value, "is_active": u.is_active}
-        for u in result.scalars()
-    ]
+    users = result.scalars().all()
+    for u in users:
+        u.display_id = u.display_name()
+    return users
 
+@router.patch("/users/{user_id}", response_model=UserRead)
+async def update_user(
+    user_id: int, 
+    obj_in: UserUpdate, 
+    db: AsyncSession = Depends(get_db), 
+    _=Depends(require_admin)
+):
+    """Обновление профиля, ролей, локации и прав делегирования (п. 5.4-5.5 ТЗ)"""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = obj_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(user, field, value)
+    
+    await db.commit()
+    await db.refresh(user)
+    user.display_id = user.display_name()
+    return user
+
+@router.delete("/users/{user_id}")
+async def deactivate_user(user_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    """Мягкое удаление пользователя"""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.is_active = False
+    await db.commit()
+    return {"detail": f"User {user_id} deactivated"}
 
 @router.patch("/users/{user_id}/role")
 async def set_user_role(

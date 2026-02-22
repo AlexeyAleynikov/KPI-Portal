@@ -59,6 +59,10 @@ class User(Base):
     can_adjust_kpi = Column(Boolean, default=False)
     kpi_adjust_limit_pct = Column(Integer, default=0)       # ±N%
     can_manage_team = Column(Boolean, default=False)
+    # Канал получения OTP
+    otp_channel = Column(String(16), default="email", nullable=False)  # email | telegram
+    telegram_chat_id = Column(String(64), nullable=True)
+    telegram_confirmed = Column(Boolean, default=False)
 
     # Логи входов
     audit_logs = relationship("AuditLog", back_populates="user", lazy="dynamic")

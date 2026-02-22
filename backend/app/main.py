@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import auth, users, kpi, links, admin
+from app.routers import telegram
 
 
 @asynccontextmanager
@@ -34,6 +35,7 @@ app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(kpi.router, prefix="/api/kpi", tags=["kpi"])
 app.include_router(links.router, prefix="/api/links", tags=["links"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(telegram.router, prefix="/api/telegram", tags=["telegram"])
 
 
 @app.get("/api/health")
