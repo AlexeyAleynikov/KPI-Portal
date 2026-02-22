@@ -101,7 +101,7 @@ async def create_section(body: SectionSchema, db: AsyncSession = Depends(get_db)
 
 
 class LinkSchema(BaseModel):
-    section_id: int
+    section_id: Optional[int] = None
     name: str
     url: str
     icon: Optional[str] = None
@@ -227,3 +227,97 @@ async def set_user_role(
     user.role = role
     await db.commit()
     return {"detail": "Role updated"}
+
+
+@router.delete("/sections/{section_id}")
+async def delete_section(section_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    section = await db.get(LinkSection, section_id)
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+    await db.delete(section)
+    await db.commit()
+    return {"detail": "Section deleted"}
+
+
+# ─── Geo dictionaries ─────────────────────────────────────────────────────────
+from app.models.geo import Continent, Country, City
+
+@router.get("/geo/continents")
+async def list_continents(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    result = await db.execute(select(Continent).order_by(Continent.name))
+    return [{"id": c.id, "name": c.name} for c in result.scalars()]
+
+@router.post("/geo/continents")
+async def create_continent(name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = Continent(name=name)
+    db.add(c); await db.commit(); await db.refresh(c)
+    return {"id": c.id, "name": c.name}
+
+@router.patch("/geo/continents/{id}")
+async def update_continent(id: int, name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(Continent, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    c.name = name; await db.commit()
+    return {"id": c.id, "name": c.name}
+
+@router.delete("/geo/continents/{id}")
+async def delete_continent(id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(Continent, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(c); await db.commit()
+    return {"detail": "Deleted"}
+
+
+@router.get("/geo/countries")
+async def list_countries(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    result = await db.execute(select(Country).order_by(Country.name))
+    return [{"id": c.id, "name": c.name} for c in result.scalars()]
+
+@router.post("/geo/countries")
+async def create_country(name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = Country(name=name)
+    db.add(c); await db.commit(); await db.refresh(c)
+    return {"id": c.id, "name": c.name}
+
+@router.patch("/geo/countries/{id}")
+async def update_country(id: int, name: str, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(Country, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    c.name = name; await db.commit()
+    return {"id": c.id, "name": c.name}
+
+@router.delete("/geo/countries/{id}")
+async def delete_country(id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(Country, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(c); await db.commit()
+    return {"detail": "Deleted"}
+
+
+@router.get("/geo/cities")
+async def list_cities(continent_id: Optional[int] = None, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    q = select(City).order_by(City.name)
+    if continent_id:
+        q = q.where(City.continent_id == continent_id)
+    result = await db.execute(q)
+    return [{"id": c.id, "name": c.name, "continent_id": c.continent_id} for c in result.scalars()]
+
+@router.post("/geo/cities")
+async def create_city(name: str, continent_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = City(name=name, continent_id=continent_id)
+    db.add(c); await db.commit(); await db.refresh(c)
+    return {"id": c.id, "name": c.name, "continent_id": c.continent_id}
+
+@router.patch("/geo/cities/{id}")
+async def update_city(id: int, name: str, continent_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(City, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    c.name = name; c.continent_id = continent_id; await db.commit()
+    return {"id": c.id, "name": c.name}
+
+@router.delete("/geo/cities/{id}")
+async def delete_city(id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    c = await db.get(City, id)
+    if not c: raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(c); await db.commit()
+    return {"detail": "Deleted"}
