@@ -9,7 +9,16 @@ from app.routers import telegram
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: можно добавить прогрев кэша, проверку соединений и т.д.
+    # Startup
+    if settings.TELEGRAM_BOT_TOKEN and settings.FRONTEND_URL:
+        import urllib.request
+        webhook_url = f"{settings.FRONTEND_URL}/api/telegram/webhook"
+        url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/setWebhook?url={webhook_url}"
+        try:
+            urllib.request.urlopen(url, timeout=5)
+            print(f"[Telegram] Webhook зарегистрирован: {webhook_url}")
+        except Exception as e:
+            print(f"[Telegram] Ошибка регистрации webhook: {e}")
     yield
     # Shutdown
 
