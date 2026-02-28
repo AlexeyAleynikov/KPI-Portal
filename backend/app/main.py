@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import auth, users, kpi, links, admin
 from app.models.geo import Continent, Country, City  # noqa: F401
+from app.models.dimension import Dimension, DimensionValue  # noqa: F401
 from app.routers import telegram
 
 

@@ -35,6 +35,7 @@ class KpiIndicator(Base):
     source_type = Column(Enum(SourceType), nullable=False, default=SourceType.MANUAL)
 
     # Формула (для computed)
+    period_type = Column(String(16), nullable=False, default="month")
     formula = Column(Text, nullable=True)
 
     # Расписание обновления (cron)

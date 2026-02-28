@@ -8,8 +8,49 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.auth.deps import get_current_user, require_manager
 from app.models.user import User
-from app.models.kpi import KpiValue, KpiTarget, KpiIndicator
+from app.models.kpi import KpiValue, KpiTarget, KpiIndicator, SourceType
 from app.models.role import RoleIndicator
+import re
+
+
+async def compute_formula(formula: str, user_id: int, target_date, db) -> float | None:
+    """Вычисляет формулу KPI подставляя значения других показателей по name_system."""
+    # Находим все {name_system} в формуле
+    names = re.findall(r'\{(\w+)\}', formula)
+    if not names:
+        return None
+    
+    values = {}
+    for name in names:
+        # Находим показатель по name_system
+        ind_result = await db.execute(
+            select(KpiIndicator).where(KpiIndicator.name_system == name)
+        )
+        ind = ind_result.scalar_one_or_none()
+        if not ind:
+            return None
+        
+        # Берём значение за дату
+        val_result = await db.execute(
+            select(KpiValue).where(
+                KpiValue.indicator_id == ind.id,
+                KpiValue.user_id == user_id,
+                KpiValue.date == target_date,
+            )
+        )
+        kpi_val = val_result.scalar_one_or_none()
+        values[name] = kpi_val.value if kpi_val else 0.0
+    
+    # Подставляем значения в формулу
+    expr = formula
+    for name, val in values.items():
+        expr = expr.replace(f'{{{name}}}', str(val))
+    
+    try:
+        result = eval(expr, {"__builtins__": {}}, {})
+        return round(float(result), 4)
+    except Exception:
+        return None
 
 router = APIRouter()
 
@@ -46,6 +87,15 @@ async def get_dashboard(
             )
         )
         kpi_val = val_result.scalar_one_or_none()
+
+        # Для вычисляемых показателей считаем формулу
+        ind_row_check = await db.get(KpiIndicator, ri.indicator_id)
+        if ind_row_check and ind_row_check.source_type == SourceType.COMPUTED and ind_row_check.formula and kpi_val is None:
+            computed_val = await compute_formula(ind_row_check.formula, current_user.id, target_date, db)
+            if computed_val is not None:
+                class _FakeVal:
+                    value = computed_val
+                kpi_val = _FakeVal()
 
         target_result = await db.execute(
             select(KpiTarget).where(
