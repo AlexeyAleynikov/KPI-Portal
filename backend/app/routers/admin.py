@@ -469,3 +469,97 @@ async def delete_dimension_value(val_id: int, db: AsyncSession = Depends(get_db)
     if not v: raise HTTPException(status_code=404, detail="Not found")
     await db.delete(v); await db.commit()
     return {"detail": "Deleted"}
+
+
+# ─── KPI Objects ──────────────────────────────────────────────────────────────
+from app.models.kpi_object import KpiObject, KpiObjectType
+
+class KpiObjectSchema(BaseModel):
+    name: str
+    object_type: str
+    parent_id: Optional[int] = None
+
+@router.get("/kpi-objects")
+async def list_kpi_objects(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    result = await db.execute(select(KpiObject).order_by(KpiObject.object_type, KpiObject.name))
+    return [{"id": o.id, "name": o.name, "object_type": o.object_type.value, "parent_id": o.parent_id} for o in result.scalars()]
+
+@router.post("/kpi-objects")
+async def create_kpi_object(body: KpiObjectSchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    o = KpiObject(name=body.name, object_type=body.object_type, parent_id=body.parent_id)
+    db.add(o); await db.commit(); await db.refresh(o)
+    return {"id": o.id, "name": o.name, "object_type": o.object_type.value}
+
+@router.patch("/kpi-objects/{obj_id}")
+async def update_kpi_object(obj_id: int, body: KpiObjectSchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    o = await db.get(KpiObject, obj_id)
+    if not o: raise HTTPException(status_code=404, detail="Not found")
+    o.name = body.name; o.object_type = body.object_type; o.parent_id = body.parent_id
+    await db.commit()
+    return {"id": o.id, "name": o.name}
+
+@router.delete("/kpi-objects/{obj_id}")
+async def delete_kpi_object(obj_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    o = await db.get(KpiObject, obj_id)
+    if not o: raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(o); await db.commit()
+    return {"detail": "Deleted"}
+
+
+# ─── KPI Policies ─────────────────────────────────────────────────────────────
+from app.models.kpi_policy import KpiPolicy
+
+class PolicySchema(BaseModel):
+    user_id: Optional[int] = None
+    continent: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    can_view: bool = True
+    can_edit: bool = False
+    can_view_subordinates: bool = False
+    can_edit_subordinates: bool = False
+    edit_days_limit: Optional[int] = None
+    edit_days_limit_subordinates: Optional[int] = None
+    is_personal: bool = False
+
+@router.get("/policies")
+async def list_policies(db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    result = await db.execute(select(KpiPolicy))
+    out = []
+    for p in result.scalars():
+        user_name = None
+        if p.user_id:
+            u = await db.get(User, p.user_id)
+            user_name = u.full_name if u else None
+        out.append({
+            "id": p.id, "user_id": p.user_id, "user_name": user_name,
+            "continent": p.continent, "country": p.country, "city": p.city,
+            "can_view": p.can_view, "can_edit": p.can_edit,
+            "can_view_subordinates": p.can_view_subordinates,
+            "can_edit_subordinates": p.can_edit_subordinates,
+            "edit_days_limit": p.edit_days_limit, "edit_days_limit_subordinates": p.edit_days_limit_subordinates, "is_personal": p.is_personal,
+        })
+    return out
+
+@router.post("/policies")
+async def create_policy(body: PolicySchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    p = KpiPolicy(**body.model_dump())
+    if p.user_id: p.is_personal = True
+    db.add(p); await db.commit(); await db.refresh(p)
+    return {"id": p.id}
+
+@router.patch("/policies/{policy_id}")
+async def update_policy(policy_id: int, body: PolicySchema, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    p = await db.get(KpiPolicy, policy_id)
+    if not p: raise HTTPException(status_code=404, detail="Not found")
+    for f, v in body.model_dump(exclude_unset=True).items():
+        setattr(p, f, v)
+    await db.commit()
+    return {"detail": "Updated"}
+
+@router.delete("/policies/{policy_id}")
+async def delete_policy(policy_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+    p = await db.get(KpiPolicy, policy_id)
+    if not p: raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(p); await db.commit()
+    return {"detail": "Deleted"}

@@ -312,11 +312,14 @@ export default function AdminKpiPage() {
                 )}
               </>}
               {(tab === "targets" || tab === "values") && <>
-                <select value={form.user_id || ""} onChange={e => setForm((p: any) => ({ ...p, user_id: +e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option value="">Выберите пользователя...</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
-                </select>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Пользователь (оставьте пустым — пользователь введёт сам)</label>
+                  <select value={form.user_id || ""} onChange={e => setForm((p: any) => ({ ...p, user_id: e.target.value ? +e.target.value : null }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">Пользователь вводит сам</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                  </select>
+                </div>
                 <select value={form.indicator_id || ""} onChange={e => setForm((p: any) => ({ ...p, indicator_id: +e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                   <option value="">Выберите показатель...</option>

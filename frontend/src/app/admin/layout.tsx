@@ -51,6 +51,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link href="/admin/dimensions" className="text-sm text-gray-600 dark:text-gray-300 hover:text-brand-500 transition">
                 Измерения
               </Link>
+              <Link href="/admin/hierarchy" className="text-sm text-gray-600 dark:text-gray-300 hover:text-brand-500 transition">
+                Иерархия
+              </Link>
+              <Link href="/admin/policies" className="text-sm text-gray-600 dark:text-gray-300 hover:text-brand-500 transition">
+                Политики
+              </Link>
             </nav>
           </div>
           <Link href="/dashboard" className="text-sm text-gray-500 hover:underline">

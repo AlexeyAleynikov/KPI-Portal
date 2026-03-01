@@ -13,6 +13,7 @@ interface User {
   city: string | null;
   is_active: boolean;
   otp_channel: string;
+  manager_id: number | null;
 }
 
 const ROLES = ["employee", "manager", "admin"];
@@ -77,6 +78,7 @@ export default function AdminUsersPage() {
         continent: editUser.continent,
         role: editUser.role,
         otp_channel: editUser.otp_channel,
+        manager_id: editUser.manager_id,
       }),
     });
     if (r.ok) { setEditUser(null); load(); }
@@ -240,6 +242,17 @@ export default function AdminUsersPage() {
                 <option value="telegram">Telegram</option>
                 <option value="log">Log (dev)</option>
               </select>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Руководитель</label>
+                <select value={editUser.manager_id ?? ""}
+                  onChange={e => setEditUser(p => p ? { ...p, manager_id: e.target.value ? +e.target.value : null } : p)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  <option value="">Нет руководителя (топ-уровень)</option>
+                  {users.filter(u => u.id !== editUser.id).map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
             <div className="flex gap-3 mt-4">
